@@ -1,7 +1,7 @@
 import React, { Component } from 'react'
 import PropTypes from 'prop-types'
 import { View } from 'react-native'
-import ImageCropper from 'react-native-advance-image-cropper'
+import ImageCropper from 'react-native-advance-image-cropper1'
 
 import CropperFooter from './cropperFooter'
 import Styles from './style'

@@ -17,7 +17,7 @@ export default StyleSheet.create({
     // marginTop: 12,
   },
   tileMargin: {
-    marginVertical: '2%',
+    marginVertical: 10,
   },
 
   titleTextStyle: {
@@ -62,6 +62,6 @@ export default StyleSheet.create({
     justifyContent: 'space-around',
   },
   buttonMarginTop: {
-    marginTop: '2%',
+    marginTop: -10,
   },
 })
