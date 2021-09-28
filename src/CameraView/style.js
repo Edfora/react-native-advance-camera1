@@ -54,8 +54,9 @@ export default StyleSheet.create({
   },
 
   swapButtonImage: {
-    width: 27,
-    height: 27,
+    marginTop: 5,
+    width: 36,
+    height: 36,
     resizeMode: 'contain',
   },
 
