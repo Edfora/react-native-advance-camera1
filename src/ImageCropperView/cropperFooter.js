@@ -11,17 +11,17 @@ import { TOUCHABLE_ACTIVE_OPACITY } from '../utils'
 
 export default class CropperFooter extends Component {
   renderTopTile = () => {
-    const { titleTextStyle, tileMargin, wrapperPadding } = Styles
+    const { bottomTopTextStyle, tileMargin, wrapperPadding } = Styles
     return (
       <View style={[tileMargin, wrapperPadding]}>
-        <Text style={titleTextStyle}>Is this photo clear?</Text>
+        <Text style={bottomTopTextStyle}>Is this photo clear?</Text>
       </View>
     )
   }
 
   renderButtons = () => {
     const { goBackFrom, onDone } = this.props
-    const { buttonMarginTop, footerBtnContainer } = Styles
+    const { buttonMarginTop, footerBtnContainer, bottomTextStyle } = Styles
     return (
       <View style={footerBtnContainer}>
         <View style={buttonMarginTop}>
@@ -29,7 +29,7 @@ export default class CropperFooter extends Component {
             activeOpacity={TOUCHABLE_ACTIVE_OPACITY}
             onPress={onDone}
           >
-            <Text>YES, LOOKS GOOD</Text>
+            <Text style={bottomTextStyle}>YES, LOOKS GOOD</Text>
           </TouchableOpacity>
         </View>
         <View style={buttonMarginTop}>
@@ -37,7 +37,7 @@ export default class CropperFooter extends Component {
             activeOpacity={TOUCHABLE_ACTIVE_OPACITY}
             onPress={() => goBackFrom('CROP_VIEW')}
           >
-            <Text>TAKE ANOTHER PHOTO</Text>
+            <Text style={bottomTextStyle}>TAKE ANOTHER PHOTO</Text>
           </TouchableOpacity>
         </View>
       </View>

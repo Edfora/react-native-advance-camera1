@@ -19,7 +19,7 @@ export default StyleSheet.create({
   bottomView: {
     flex: 0,
     paddingHorizontal: 10,
-    backgroundColor: '#FFF',
+    backgroundColor: '#000',
   },
 
   topView: {
@@ -66,10 +66,11 @@ export default StyleSheet.create({
   },
 
   closeButtonImage: {
-    width: 12,
-    height: 12,
-    opacity: 0.5,
-    padding: 10,
+    width: 40,
+    height: 40,
+    padding: 30,
+    marginLeft: 10, 
+    marginTop: 10
   },
 
   middleTileWrapper: {

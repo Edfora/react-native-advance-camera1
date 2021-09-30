@@ -50,7 +50,7 @@ export default StyleSheet.create({
   },
   bottomViewWrapper: {
     height: '100%',
-    backgroundColor: '#FFF',
+    backgroundColor: '#000',
   },
   buttonsStyle: {
     flex: 1,
@@ -63,5 +63,12 @@ export default StyleSheet.create({
   },
   buttonMarginTop: {
     marginTop: -10,
+  },
+  bottomTopTextStyle: {
+    color: 'rgb(255, 255, 255)',
+    fontSize: 18
+  },
+  bottomTextStyle: {
+    color: 'rgb(255, 255, 255)'
   },
 })
