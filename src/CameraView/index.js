@@ -180,7 +180,7 @@ export default class CameraViewWrapper extends React.Component {
 }
 
 CameraViewWrapper.propTypes = {
-  cameraType: "back" | "front", // "back" | "front"
+  cameraType: PropTypes.string, // "back" | "front"
   disableButton: PropTypes.bool.isRequired,
   handleBackButtonOnCamera: PropTypes.func.isRequired,
   ratio: PropTypes.string,
