@@ -278,9 +278,9 @@ export default class CameraFlowWrapper extends React.Component {
           animated={true}
           onRequestClose={() => this.handleBackButtonOnCamera()}
         >
-          <Loader
+          {/* <Loader
             isLoading={isLoading}
-          />
+          /> */}
           {
             (modalType === 'CAMERA_VIEW') && (this.renderCameraView())
           }

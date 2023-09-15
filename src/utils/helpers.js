@@ -1,121 +1,356 @@
+import React from 'react'
+import PropTypes from 'prop-types'
 import { Platform, Dimensions } from 'react-native'
-import RNFS from 'react-native-fs'
-import ImageResizer from 'react-native-image-resizer' // eslint-disable-line
-import Toast from 'react-native-root-toast'
-import { isNumber } from 'lodash'
+import {
+  View,
+  Modal,
+  StatusBar,
+} from 'react-native'
+import { map, findIndex, isEqual } from 'lodash'
 
-const showToast = (
-  alertMessage,
-  config = {
-    backgroundColor: '#FFFFFF',
-    duration: 5000,
-    position: 22,
-    shadow: true,
-    textColor: '#1E2B3A',
-    textStyle: {
-      fontFamily: 'Muli',
-      fontSize: 14,
-    },
-    opacity: 1,
-  },
-) => Toast.show(alertMessage, config)
+import CameraView from './CameraView'
+import ImageCropperView from './ImageCropperView'
+import GalleryView from './GalleryView'
+import { Loader } from './Common'
 
-const convertFileUrlToBase64 = async url => {
-  // eslint-disable-next-line no-useless-catch
-  try {
-    const options = 'base64'
-    const response = await RNFS.readFile(url, options)
-    return response
-  }
-  catch (e) {
-    throw e
-  }
-}
-
-const getFileNameFromURI = uri => uri.substring(uri.lastIndexOf('/') + 1, uri.lastIndexOf('.'))
-
-const getFileTypeFromURI = uri => uri.substring(uri.lastIndexOf('.') + 1)
-
-const getResizedHeight = (imageSize = 0, prevHeight) => {
-  const diffToBeMinimized = Math.floor(imageSize / 600000)
-  return (prevHeight / (diffToBeMinimized || 4))
-}
-
-const imageResizer = async (imageInfo, options = {}) => {
-  const {
-    path,
-    uri,
-    size,
-    height,
-    width,
-  } = imageInfo
-
-  const {
-    newWidth,
-    newHeight,
-    compressFormat,
-    quality,
-    rotation,
-    outputPath,
-  } = options
-
-  const NEW_WIDTH = newWidth || getResizedHeight(size, width)
-  const NEW_HEIGHT = newHeight || getResizedHeight(size, height)
-  const COMPRESS_FORMAT = compressFormat || 'JPEG'
-  const QUALITY = quality || 70
-  const ROTATION = rotation || 0
-  const OUTPUT_PATH = outputPath || null
-
-  const resizedImage = await ImageResizer.createResizedImage(path
-    || uri, NEW_WIDTH, NEW_HEIGHT, COMPRESS_FORMAT, QUALITY, ROTATION, OUTPUT_PATH).then(response => (
-    {
-      ...imageInfo,
-      ...response,
-      height: NEW_HEIGHT,
-      width: NEW_WIDTH,
-    }
-    // response.uri is the URI of the new image that can now be displayed, uploaded...
-    // response.path is the path of the new image
-    // response.name is the name of the new image with the extension
-    // response.size is the size of the new image
-  )).catch(err => {
-    showToast('Oops, something went wrong. Check that the filename is correct')
-    // Oops, something went wrong. Check that the filename is correct and
-    // inspect err to get more details.
-  })
-
-  return resizedImage
-}
-
-const getPlatform = () => (
-  Platform.OS
-)
-
-/**
- * Returns width of the device
- */
-const deviceWidth = () => {
-  const dim = Dimensions.get('window')
-  return dim.width
-}
-
-/**
- * Returns height of the device
- */
-const deviceHeight = () => {
-  const dim = Dimensions.get('window')
-  return dim.height
-}
-
-const getImageSource = imagePath => (isNumber(imagePath) ? imagePath : { uri: imagePath })
-
-export {
-  getPlatform,
-  imageResizer,
+import Styles from './style'
+import {
+  convertFileUrlToBase64,
   getFileNameFromURI,
   getFileTypeFromURI,
-  convertFileUrlToBase64,
-  getImageSource,
-  deviceWidth,
-  deviceHeight,
+  imageResizer,
+  getPlatform,
+} from './utils'
+
+export default class CameraFlowWrapper extends React.Component {
+  constructor(props) {
+    super(props)
+    const { defaultScreen } = props
+    this.state = {
+      isLoading: false,
+      initialScreen: defaultScreen,
+      imageClicked: null,
+      modalType: defaultScreen, // Modal Types: CAMERA_VIEW, CROP_VIEW, GALLERY_VIEW
+      selectedImages: [],
+      selectedPdf: {},
+      disableButton: false,
+    }
+  }
+
+  setDisableButtion = visibility => {
+    this.setState({
+      disableButton: visibility,
+    })
+  }
+
+  handleBackButtonOnCamera = () => {
+    const { renderCameraModal } = this.props
+    const {
+      modalType,
+      initialScreen,
+      selectedImages,
+    } = this.state
+    switch (modalType) {
+      case 'CAMERA_VIEW':
+        this.setDisableButtion(false)
+        renderCameraModal(false)
+        break
+
+      case 'CROP_VIEW':
+        this.setState({
+          modalType: 'CAMERA_VIEW',
+          isLoading: false,
+        })
+        break
+
+      case 'GALLERY_VIEW':
+        // const newSelectedImageArray = selectedImages.slice(0, selectedImages.length)
+        this.setState({
+          selectedImages: selectedImages.slice(0, selectedImages.length - 1),
+          modalType: 'CROP_VIEW',
+          isLoading: false,
+        })
+        break
+
+      default:
+        this.setState({
+          modalType: 'CAMERA_VIEW',
+        })
+    }
+    return true
+  }
+
+  setLoading = input => {
+    this.setState({
+      isLoading: input,
+    })
+  }
+
+  // Executes on positive response from Camera Screen
+  takePicture = imageData => {
+    console.warn('takePicture', imageData)
+    this.setState({
+      imageClicked: imageData,
+      modalType: 'CROP_VIEW',
+    })
+  }
+
+  addToImagesStackArray = async imageUrl => {
+    const { base64String } = this.props
+    const { selectedImages } = this.state
+    const preSelectedImages = map(selectedImages, (item, index) => {
+      const newItem = item
+      newItem.isSelected = false
+      return newItem
+    })
+    preSelectedImages.push({
+      uri: imageUrl,
+      imageUrl,
+      type: 'clicked',
+      fileName: getFileNameFromURI(imageUrl),
+      fileType: getFileTypeFromURI(imageUrl),
+      base64String: null,
+      isSelected: true,
+    })
+
+    await this.setState({
+      isLoading: false,
+      selectedImages: preSelectedImages,
+      modalType: 'GALLERY_VIEW',
+    })
+  }
+
+  // Executes on positive response from image cropper
+  saveImageAfterCrop = async croppedImageData => {
+    const { base64String } = this.props
+    this.setState({
+      isLoading: true,
+    })
+    console.warn('image after imagecropper', croppedImageData)
+    // const resizedImageData = await imageResizer(croppedImageData)
+    const {
+      uri,
+    } = croppedImageData
+    const imageUri = uri
+    const { getMultipleImages } = this.props
+    if (getMultipleImages) {
+      this.addToImagesStackArray(imageUri)
+    }
+    else {
+      this.onSubmitPhoto({
+        uri: imageUri,
+        imageUri,
+        type: 'clicked',
+        fileName: uri.substring(uri.lastIndexOf('/') + 1, uri.lastIndexOf('.')),
+        fileType: uri.substring(uri.lastIndexOf('.') + 1),
+        base64String: base64String ? await convertFileUrlToBase64(imageUri) : null,
+        isSelected: true,
+      })
+      // this.onSubmitPhoto(imageUri)
+    }
+  }
+
+  // Executes on submitting the photos clicked
+  onSubmitPhoto = async imageData => {
+    const { onSubmitPhoto, renderCameraModal } = this.props
+    this.setState({
+      isLoading: false,
+    })
+    await renderCameraModal(false)
+    onSubmitPhoto(imageData)
+    this.resetModal()
+  }
+
+  // To reset the modal to initial state
+  resetModal = () => {
+    const { defaultScreen } = this.props
+    this.setState({
+      imageClicked: null,
+      modalType: defaultScreen,
+      selectedImages: [],
+    })
+  }
+
+  goToCameraScreen = () => {
+    this.setState({
+      modalType: 'CAMERA_VIEW',
+    })
+  }
+
+  // To render Camera View
+  renderCameraView = () => {
+    const { modalViewWrapper } = Styles
+    const { disableButton } = this.state
+    const {
+      titleText, renderCameraModal, isSwapButton,
+      renderCustomCameraFooterView, cameraProps } = this.props
+    return (
+      <View style={modalViewWrapper}>
+        <CameraView
+          disableButton={disableButton}
+          handleBackButtonOnCamera={this.handleBackButtonOnCamera}
+          isSwapButton={isSwapButton}
+          renderCameraModal={renderCameraModal}
+          setDisableButtion={this.setDisableButtion}
+          setLoading={this.setLoading}
+          takePicture={this.takePicture}
+          titleText={titleText}
+          renderCustomCameraFooterView={renderCustomCameraFooterView}
+          { ...cameraProps }
+        />
+      </View>
+    )
+  }
+
+  // To render Image Cropper View
+  renderCropperView = () => {
+    const { modalViewWrapper } = Styles
+    const { imageClicked } = this.state
+    const { cropperProps } = this.props
+    return (
+      <View style={modalViewWrapper}>
+        <ImageCropperView
+          goBackFrom={this.handleBackButtonOnCamera}
+          imageClicked={imageClicked}
+          saveImageAfterCrop={this.saveImageAfterCrop}
+          { ...cropperProps }
+        />
+      </View>
+    )
+  }
+
+  // To render Gallery View
+  renderGalleryView = () => {
+    const { modalViewWrapper } = Styles
+    const { renderCameraModal, gallerySubmitButtonText, galleryCancelButtonText } = this.props
+    const { selectedImages } = this.state
+    return (
+      <View style={modalViewWrapper}>
+        <GalleryView
+          deleteImageFromStack={selectedImage => this.deleteImageFromStack(selectedImage)}
+          goBackFrom={this.handleBackButtonOnCamera}
+          goToCameraScreen={this.goToCameraScreen}
+          leftButtonText={galleryCancelButtonText}
+          onSubmitPhoto={this.onSubmitPhoto}
+          renderCameraModal={renderCameraModal}
+          resetModal={this.resetModal}
+          rightButtonText={gallerySubmitButtonText}
+          selectedImages={selectedImages}
+        />
+      </View>
+    )
+  }
+
+  onSubmitDocument = () => {
+    const { selectedPdf } = this.state
+    this.onSubmitPhoto(selectedPdf)
+  }
+
+  deleteImageFromStack = selectedImage => {
+    const { selectedImages } = this.state
+    const selectedImageIndex = findIndex(selectedImages, item => isEqual(item, selectedImage))
+    this.setState({
+      selectedImages: [
+        ...selectedImages.slice(0, selectedImageIndex),
+        ...selectedImages.slice(selectedImageIndex + 1, selectedImages.length),
+      ],
+    })
+  }
+
+  render() {
+    const { modalProps } = this.props
+    const {
+      modalType,
+      isLoading,
+    } = this.state
+    const { modalContainerViewStyle } = Styles
+    const platform = Platform.OS
+    return (
+      <View style={modalContainerViewStyle}>
+        {
+          (platform === 'ios') && (
+            <StatusBar
+              hidden
+            />
+          )
+        }
+        <Modal
+          {...modalProps}
+          animated={true}
+          onRequestClose={() => this.handleBackButtonOnCamera()}
+        >
+          {/* <Loader
+            isLoading={isLoading}
+          /> */}
+          {
+            (modalType === 'CAMERA_VIEW') && (this.renderCameraView())
+          }
+          {
+            (modalType === 'CROP_VIEW') && (this.renderCropperView())
+          }
+          {
+            (modalType === 'GALLERY_VIEW') && (this.renderGalleryView())
+          }
+        </Modal>
+      </View>
+    )
+  }
+}
+
+CameraFlowWrapper.propTypes = {
+  base64String: PropTypes.bool,
+  defaultScreen: PropTypes.string,
+  descText: PropTypes.string,
+  galleryCancelButtonText: PropTypes.string,
+  gallerySubmitButtonText: PropTypes.string,
+  getMultipleImages: PropTypes.bool, // Boolean to tell whether to take multiple photos or not
+  isSignatureUser: PropTypes.bool,
+  isSwapButton: PropTypes.bool, // To Toggle Camera Button
+  modalProps: PropTypes.object, // To provide Modal View properties
+  onSubmitPhoto: PropTypes.func.isRequired, // Function to run after submitting photos
+  renderCameraModal: PropTypes.func.isRequired, // To Toggle Camera Modal
+  titleText: PropTypes.string, // Title for which Modal is enabled
+  renderCustomCameraFooterView: PropTypes.func, // Function returning a React Component (Custom footer for Camera View)
+
+  cropperProps: PropTypes.shape({
+    borderWidth: PropTypes.number,
+    footerHeight: PropTypes.number,
+    unSelectedAreaOpacity: PropTypes.number,  // Between 0-1
+  }),
+
+  cameraProps: PropTypes.shape({
+    cameraType: "back" | "front", // "back" | "front"
+    ratio: PropTypes.string,
+  }),
+}
+
+CameraFlowWrapper.defaultProps = {
+  base64String: false,
+  defaultScreen: 'CAMERA_VIEW',
+  getMultipleImages: false,
+  modalProps: {
+    visible: false,
+    transparent: false,
+    animationType: 'slide',
+  },
+  isSignatureUser: false,
+  isSwapButton: true, // To Toggle Camera Button
+  titleText: '',
+  descText: 'You will need to upload both front and back of the ID',
+  gallerySubmitButtonText: 'Done',
+  galleryCancelButtonText: 'Cancel',
+  renderCustomCameraFooterView: undefined,
+
+  // Image Cropper Props
+  cropperProps: {
+    borderWidth: 20,
+    footerHeight: 100,
+    unSelectedAreaOpacity: 0.4,  // Between 0-1
+  },
+
+  // Camera Props
+  cameraProps: {
+    cameraType: 'back',
+    ratio: '1:1',
+  }
 }
