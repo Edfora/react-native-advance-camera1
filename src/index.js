@@ -4,6 +4,7 @@ import {
   View,
   Modal,
   StatusBar,
+  Platform,
 } from 'react-native'
 import { map, findIndex, isEqual } from 'lodash'
 
@@ -106,9 +107,9 @@ export default class CameraFlowWrapper extends React.Component {
       uri: imageUrl,
       imageUrl,
       type: 'clicked',
-      fileName: getFileNameFromURI(imageUrl),
-      fileType: getFileTypeFromURI(imageUrl),
-      base64String: base64String ? await convertFileUrlToBase64(imageUrl) : null,
+      fileName: uri.substring(uri.lastIndexOf('/') + 1, uri.lastIndexOf('.')),
+      fileType: uri.substring(uri.lastIndexOf('.') + 1),
+      base64String: null,
       isSelected: true,
     })
 
@@ -126,10 +127,10 @@ export default class CameraFlowWrapper extends React.Component {
       isLoading: true,
     })
     console.warn('image after imagecropper', croppedImageData)
-    const resizedImageData = await imageResizer(croppedImageData)
+    // const resizedImageData = await imageResizer(croppedImageData)
     const {
       uri,
-    } = resizedImageData
+    } = croppedImageData
     const imageUri = uri
     const { getMultipleImages } = this.props
     if (getMultipleImages) {
@@ -140,9 +141,9 @@ export default class CameraFlowWrapper extends React.Component {
         uri: imageUri,
         imageUri,
         type: 'clicked',
-        fileName: getFileNameFromURI(imageUri),
-        fileType: getFileTypeFromURI(imageUri),
-        base64String: base64String ? await convertFileUrlToBase64(imageUri) : null,
+        fileName: uri.substring(uri.lastIndexOf('/') + 1, uri.lastIndexOf('.')),
+        fileType: uri.substring(uri.lastIndexOf('.') + 1),
+        base64String: null,
         isSelected: true,
       })
       // this.onSubmitPhoto(imageUri)
@@ -263,7 +264,7 @@ export default class CameraFlowWrapper extends React.Component {
       isLoading,
     } = this.state
     const { modalContainerViewStyle } = Styles
-    const platform = getPlatform()
+    const platform = Platform.OS
     return (
       <View style={modalContainerViewStyle}>
         {
